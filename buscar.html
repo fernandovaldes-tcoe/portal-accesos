@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Número de Empleado</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
+        h2 { margin-top: 0; color: #0056b3; }
+        .input-group { text-align: left; margin-bottom: 15px; }
+        label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
+        input:disabled { background-color: #e9ecef; cursor: not-allowed; opacity: 0.7; }
+        button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        button:hover:not(:disabled) { background-color: #004494; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        #resultado { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; font-size: 24px; color: #0056b3; background-color: #e9ecef; display: none; word-break: break-all; cursor: pointer; border: 2px dashed #0056b3; }
+        .error { font-size: 16px !important; background-color: #f8d7da !important; color: #721c24 !important; border: 1px solid #f5c6cb !important; cursor: default !important; border: 1px solid #f5c6cb !important; }
+        .disclaimer { color: #666; font-size: 13px; margin-bottom: 25px; line-height: 1.4; }
+        .loader { display: none; margin-top: 15px; font-weight: bold; color: #0056b3; font-size: 14px; }
+        /* Clase para ocultar el Honeypot de la vista humana, pero dejarlo visible para los bots */
+        .hp-trap { position: absolute; opacity: 0; top: 0; left: 0; height: 0; width: 0; z-index: -1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🔍 Buscar # de Empleado</h2>
+    <p class="disclaimer">Ingresa tus correos para consultar tu número de empleado de forma segura.</p>
+    
+    <!-- Medida Anti-Bots 3: Honeypot -->
+    <input type="text" id="hpEmail" class="hp-trap" autocomplete="off" tabindex="-1">
+
+    <div class="input-group">
+        <label>Tu Correo Coppel:</label>
+        <input type="email" id="correoEmpresa" placeholder="ejemplo@coppel.com">
+    </div>
+
+    <div class="input-group">
+        <label>Tu Correo NTT Data:</label>
+        <input type="email" id="correoNTT" placeholder="usuario@nttdata.com">
+    </div>
+    
+    <button id="btnBuscar" onclick="buscarEmpleado()">Buscar</button>
+    <div id="loading" class="loader">Buscando en la base de datos...</div>
+    
+    <!-- Al dar clic al resultado, se copiará automáticamente -->
+    <div id="resultado" onclick="copiarTexto()" title="Clic para copiar"></div>
+</div>
+
+<script>
+    const API_URL = "https://fernandovaldes-tcoe.github.io/buscar/"; 
+
+    /* Variables globales de seguridad */
+    let intentosFallidos = 0;
+    let ultimoClick      = 0;
+    let sitioBloqueado   = false;
+    
+    // Medida Anti-Bots 1: Registro del tiempo de carga
+    const tiempoCarga    = Date.now();
+
+    async function buscarEmpleado() {
+        if (sitioBloqueado) return;
+
+        const ahora = Date.now();
+        
+        // Medida Anti-Bots 2: Rate Limiting (Bloqueo si el botón se presiona en menos de 1 segundo)
+        if (ahora - ultimoClick < 1000) {
+            bloquearSitioFinal("Bloqueo de seguridad: Tráfico automatizado detectado.");
+            return;
+        }
+        ultimoClick = ahora;
+
+        // Medida Anti-Bots 1: Speed Trap (Si se llenó en menos de 2 segundos desde que cargó la web)
+        if (ahora - tiempoCarga < 2000) {
+            bloquearSitioFinal("Bloqueo de seguridad: Ejecución de scripts detectada.");
+            return;
+        }
+
+        // Medida Anti-Bots 3: Honeypot (Si el campo invisible contiene texto)
+        const honeypot = document.getElementById('hpEmail').value;
+        if (honeypot !== "") {
+            bloquearSitioFinal("Bloqueo de seguridad: Análisis anómalo del DOM detectado.");
+            return;
+        }
+
+        const cEmpresa = document.getElementById('correoEmpresa').value.trim().toLowerCase();
+        const cNTT     = document.getElementById('correoNTT').value.trim().toLowerCase();
+        
+        if(!cEmpresa || !cNTT) {
+            mostrarMensaje("Por favor llena ambos correos.", false);
+            return;
+        }
+
+        bloquearUI(true);
+
+        try {
+            const response = await fetch(`${API_URL}?empresa=${encodeURIComponent(cEmpresa)}&consultoria=${encodeURIComponent(cNTT)}`);
+            const data     = await response.json();
+
+            if (data.exito) {
+                mostrarMensaje(data.numero, true);
+                intentosFallidos = 0; // Reiniciamos contador si tuvo éxito
+                bloquearUI(false);
+            } else {
+                bloquearUI(false);
+                registrarFallo(false);
+            }
+        } catch (error) {
+            bloquearUI(false);
+            registrarFallo(true);
+        }
+    }
+
+    /* Función para gestionar la regla de los 3 intentos */
+    function registrarFallo(esErrorServidor) {
+        intentosFallidos++;
+        
+        if (intentosFallidos >= 3) {
+            bloquearSitioFinal("Acceso denegado: Límite de 3 intentos fallidos superado. El portal ha sido bloqueado.");
+        } else {
+            const restantes = 3 - intentosFallidos;
+            const msgBase   = esErrorServidor ? "Servidor de búsqueda no disponible." : "No se encontraron coincidencias.";
+            mostrarMensaje(msgBase + " Te quedan " + restantes + " intentos.", false);
+        }
+    }
+
+    /* Función para inhabilitar el portal definitivamente ante un ataque */
+    function bloquearSitioFinal(motivo) {
+        sitioBloqueado = true;
+        
+        document.getElementById('correoEmpresa').disabled   = true;
+        document.getElementById('correoNTT').disabled       = true;
+        document.getElementById('hpEmail').disabled         = true;
+        document.getElementById('btnBuscar').disabled       = true;
+        document.getElementById('loading').style.display    = "none";
+        
+        mostrarMensaje(motivo, false);
+    }
+
+    /* Bloquea la UI temporalmente mientras "Carga" */
+    function bloquearUI(estado) {
+        document.getElementById('correoEmpresa').disabled   = estado;
+        document.getElementById('correoNTT').disabled       = estado;
+        document.getElementById('btnBuscar').disabled       = estado;
+        document.getElementById('loading').style.display    = estado ? "block" : "none";
+        if(estado) document.getElementById('resultado').style.display = "none";
+    }
+
+    function mostrarMensaje(mensaje, esExito) {
+        const div = document.getElementById('resultado');
+        div.style.display = "block";
+        div.innerText = esExito ? "ID: " + mensaje + " 📋" : mensaje;
+        
+        if(esExito) {
+            div.className       = ""; 
+            div.dataset.numero  = mensaje; 
+        } else {
+            div.className       = "error";
+            div.dataset.numero  = ""; 
+        }
+    }
+
+    function copiarTexto() {
+        const div = document.getElementById('resultado');
+        if (div.className !== "error" && div.dataset.numero) {
+            navigator.clipboard.writeText(div.dataset.numero);
+            const textoOriginal = div.innerText;
+            div.innerText = "¡Copiado! ✔️";
+            setTimeout(() => div.innerText = textoOriginal, 2000);
+        }
+    }
+</script>
+</body>
+</html>
