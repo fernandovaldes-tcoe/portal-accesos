@@ -26,11 +26,11 @@
 <body>
 
 <div class="container">
-    <h2>🔍 Buscar # de Empleado</h2>
+    <h2>Buscar # de Empleado</h2>
     <p class="disclaimer">Ingresa tus correos para consultar tu número de empleado de forma segura.</p>
     
-    <!-- Medida Anti-Bots 3: Honeypot -->
-    <input type="text" id="hpEmail" class="hp-trap" autocomplete="off" tabindex="-1">
+    <!-- Medida Anti-Bots 3: Honeypot (Cambiamos el ID para evadir el autocompletado del navegador) -->
+    <input type="text" id="campoTrampa" class="hp-trap" autocomplete="off" tabindex="-1">
 
     <div class="input-group">
         <label>Tu Correo Coppel:</label>
@@ -50,7 +50,7 @@
 </div>
 
 <script>
-    const API_URL = "https://fernandovaldes-tcoe.github.io/buscar/"; 
+    const API_URL = "https://fernandovaldes-tcoe.github.io/portal-accesos/buscar"; 
 
     /* Variables globales de seguridad */
     let intentosFallidos = 0;
@@ -78,8 +78,8 @@
             return;
         }
 
-        // Medida Anti-Bots 3: Honeypot (Si el campo invisible contiene texto)
-        const honeypot = document.getElementById('hpEmail').value;
+        // Medida Anti-Bots 3: Honeypot (Validamos el nuevo ID)
+        const honeypot = document.getElementById('campoTrampa').value;
         if (honeypot !== "") {
             bloquearSitioFinal("Bloqueo de seguridad: Análisis anómalo del DOM detectado.");
             return;
@@ -132,7 +132,7 @@
         
         document.getElementById('correoEmpresa').disabled   = true;
         document.getElementById('correoNTT').disabled       = true;
-        document.getElementById('hpEmail').disabled         = true;
+        document.getElementById('campoTrampa').disabled     = true;
         document.getElementById('btnBuscar').disabled       = true;
         document.getElementById('loading').style.display    = "none";
         
