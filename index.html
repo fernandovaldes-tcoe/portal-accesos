@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Seguro - NTT Data</title>
+    <title>Portal Seguro</title>
     <!-- Cargamos la librería matemática de cifrado -->
-        <!-- Cargamos la librería matemática de cifrado -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
@@ -13,13 +12,17 @@
         h2 { margin-top: 0; color: #0056b3; }
         .input-group { text-align: left; margin-bottom: 15px; }
         label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #333; }
-        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        button:hover { background-color: #004494; }
-        #resultado { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; font-size: 20px; font-family: monospace; display: none; }
+        input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
+        input:disabled { background-color: #e9ecef; cursor: not-allowed; opacity: 0.7; }
+        button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
+        button:hover:not(:disabled) { background-color: #004494; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        #resultado { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; font-size: 20px; font-family: monospace; display: none; word-break: break-all; }
         .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
         .disclaimer { color: #666; font-size: 13px; margin-bottom: 25px; line-height: 1.4; }
+        /* Clase para ocultar el Honeypot de la vista humana, pero dejarlo visible para los bots */
+        .hp-trap { position: absolute; opacity: 0; top: 0; left: 0; height: 0; width: 0; z-index: -1; }
     </style>
 </head>
 <body>
@@ -28,31 +31,66 @@
     <h2>🔓 Revelar Acceso Seguro</h2>
     <p class="disclaimer">Todo el procesamiento es local mediante AES-256. Ningún dato que ingreses aquí viaja por internet.</p>
     
+    <!-- Medida Anti-Bots 3: Honeypot -->
+    <input type="text" id="hpEmail" class="hp-trap" autocomplete="off" tabindex="-1">
+
     <div class="input-group">
         <label>Bloque de Acceso Cifrado (Pégalo del correo):</label>
         <input type="text" id="textoCifrado" placeholder="U2FsdGVkX1...">
     </div>
 
     <div class="input-group">
-        <label>Tu Correo de Consultoría (Ej: tu.nombre@consultoria.com):</label>
-        <input type="email" id="correoUser" placeholder="usuario@empresa.com">
+        <label>Tu Correo NTT (Ej: [combinaciónnombreapellido]@nttdata.com):</label>
+        <input type="email" id="correoUser" placeholder="usuario@nttdata.com">
     </div>
     
     <div class="input-group">
-        <label>Tu Número de Empleado (PIN):</label>
-        <input type="password" id="numEmpleado" placeholder="Ingresa tu número">
+        <label>Tu Número de Empleado:</label>
+        <input type="password" id="numEmpleado" placeholder="Ingresa tu número de empleo">
     </div>
     
-    <button onclick="descifrar()">Descifrar Contraseña</button>
+    <button id="btnDescifrar" onclick="descifrar()">Descifrar</button>
     
     <div id="resultado"></div>
 </div>
 
 <script>
+    /* Variables globales de seguridad */
+    let intentosFallidos = 0;
+    let ultimoClick      = 0;
+    let sitioBloqueado   = false;
+    
+    // Medida Anti-Bots 1: Registro del tiempo de carga
+    const tiempoCarga    = Date.now();
+
     function descifrar() {
-        const textoCifrado = document.getElementById('textoCifrado').value.trim();
-        const correoUser = document.getElementById('correoUser').value.trim().toLowerCase();
-        const numEmpleado = document.getElementById('numEmpleado').value.trim();
+        if (sitioBloqueado) return;
+
+        const ahora = Date.now();
+        
+        // Medida Anti-Bots 2: Rate Limiting (Bloqueo si el botón se presiona en menos de 1 segundo)
+        if (ahora - ultimoClick < 1000) {
+            bloquearSitio("Bloqueo de seguridad: Tráfico automatizado (ráfaga de clics) detectado.");
+            return;
+        }
+        ultimoClick = ahora;
+
+        // Medida Anti-Bots 1: Speed Trap (Si se llenó en menos de 2 segundos desde que cargó la web)
+        if (ahora - tiempoCarga < 2000) {
+            bloquearSitio("Bloqueo de seguridad: Ejecución de scripts detectada.");
+            return;
+        }
+
+        // Medida Anti-Bots 3: Honeypot (Si el campo invisible contiene texto)
+        const honeypot = document.getElementById('hpEmail').value;
+        if (honeypot !== "") {
+            bloquearSitio("Bloqueo de seguridad: Análisis anómalo del DOM detectado.");
+            return;
+        }
+
+        const textoCifrado  = document.getElementById('textoCifrado').value.trim();
+        const correoUser    = document.getElementById('correoUser').value.trim().toLowerCase();
+        const numEmpleado   = document.getElementById('numEmpleado').value.trim();
         
         if(!textoCifrado || !correoUser || !numEmpleado) {
             mostrarMensaje("Por favor llena todos los campos.", false);
@@ -60,28 +98,53 @@
         }
 
         try {
-            // Recreamos la llave maestra exacta: Número + Prefix del correo
             const prefijoCorreo = correoUser.split('@')[0];
-            const llaveMaestra = numEmpleado + prefijoCorreo;
+            const llaveMaestra  = numEmpleado + prefijoCorreo;
 
-            // Intentamos descifrar
-            const bytes  = CryptoJS.AES.decrypt(textoCifrado, llaveMaestra);
+            const bytes         = CryptoJS.AES.decrypt(textoCifrado, llaveMaestra);
             const textoOriginal = bytes.toString(CryptoJS.enc.Utf8);
             
             if (textoOriginal) {
-                mostrarMensaje(textoOriginal, true);
+                mostrarMensaje("Tu contraseña es: " + textoOriginal, true);
+                intentosFallidos = 0; // Reiniciamos contador si tuvo éxito
             } else {
-                mostrarMensaje("Credenciales incorrectas.", false);
+                registrarFallo();
             }
         } catch (e) {
-            mostrarMensaje("El bloque de texto cifrado es inválido.", false);
+            registrarFallo();
         }
+    }
+
+    /* Función para gestionar la regla de los 3 intentos */
+    function registrarFallo() {
+        intentosFallidos++;
+        
+        if (intentosFallidos >= 3) {
+            bloquearSitio("Acceso denegado: Límite de 3 intentos fallidos superado. El portal ha sido bloqueado.");
+        } else {
+            const restantes = 3 - intentosFallidos;
+            mostrarMensaje("Credenciales inválidas. Te quedan " + restantes + " intentos.", false);
+        }
+    }
+
+    /* Función para inhabilitar el portal ante cualquier ataque o límite excedido */
+    function bloquearSitio(motivo) {
+        sitioBloqueado = true;
+        
+        // Desactivamos visual y lógicamente todos los campos
+        document.getElementById('textoCifrado').disabled = true;
+        document.getElementById('correoUser').disabled   = true;
+        document.getElementById('numEmpleado').disabled  = true;
+        document.getElementById('hpEmail').disabled      = true;
+        document.getElementById('btnDescifrar').disabled = true;
+        
+        mostrarMensaje(motivo, false);
     }
 
     function mostrarMensaje(mensaje, esExito) {
         const div = document.getElementById('resultado');
         div.style.display = "block";
-        div.innerText = mensaje;
+        div.innerText     = mensaje;
         if(esExito) {
             div.className = "success";
         } else {
