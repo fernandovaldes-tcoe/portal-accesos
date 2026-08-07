@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulta de Número de Empleado</title>
+    <!-- Cargamos la librería de criptografía para el Hashing SHA-256 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; }
@@ -43,16 +45,14 @@
     </div>
     
     <button id="btnBuscar" onclick="buscarEmpleado()">Buscar</button>
-    <div id="loading" class="loader">Buscando en la base de datos...</div>
+    <div id="loading" class="loader">Buscando de forma segura...</div>
     
     <!-- Al dar clic al resultado, se copiará automáticamente -->
     <div id="resultado" onclick="copiarTexto()" title="Clic para copiar"></div>
 </div>
 
 <script>
-    const API_URL = "https://fernandovaldes-tcoe.github.io/portal-accesos/buscar"; 
-
-    const DICCIONARIO_EMPLEADOS = {
+const DICCIONARIO_EMPLEADOS = {
   "d5963a8e229f95abbd8b2e5ca5d3b8a62fc5f743c7187c12c2f159b1eb53f9a6": "99807837",
   "d79ca0230785ed6d614f6cb5220f355b4e6efa452fc6a47cdda401de0a75c881": "99808275",
   "99506cdfc9a6c698ea334a8717aa220bf55f50e7137b538ef997f01b55433727": "99808401",
@@ -280,6 +280,7 @@
   "a4cd433d1b943bcba72106f73e0a940a3838550335ac62eb71a8c7fccd362c71": "90316242",
   "249b3ce754c906446ee8e9d248ce5087cca2aae3c81854c14e20832fc602fba5": "95566582"
 };
+    /* ------------------------------------------------------------------------ */
 
     /* Variables globales de seguridad */
     let intentosFallidos = 0;
@@ -289,25 +290,25 @@
     // Medida Anti-Bots 1: Registro del tiempo de carga
     const tiempoCarga    = Date.now();
 
-    async function buscarEmpleado() {
+    function buscarEmpleado() {
         if (sitioBloqueado) return;
 
         const ahora = Date.now();
         
-        // Medida Anti-Bots 2: Rate Limiting (Bloqueo si el botón se presiona en menos de 1 segundo)
+        // Medida Anti-Bots 2: Rate Limiting
         if (ahora - ultimoClick < 1000) {
             bloquearSitioFinal("Bloqueo de seguridad: Tráfico automatizado detectado.");
             return;
         }
         ultimoClick = ahora;
 
-        // Medida Anti-Bots 1: Speed Trap (Si se llenó en menos de 2 segundos desde que cargó la web)
+        // Medida Anti-Bots 1: Speed Trap
         if (ahora - tiempoCarga < 2000) {
             bloquearSitioFinal("Bloqueo de seguridad: Ejecución de scripts detectada.");
             return;
         }
 
-        // Medida Anti-Bots 3: Honeypot (Validamos el nuevo ID)
+        // Medida Anti-Bots 3: Honeypot
         const honeypot = document.getElementById('campoTrampa').value;
         if (honeypot !== "") {
             bloquearSitioFinal("Bloqueo de seguridad: Análisis anómalo del DOM detectado.");
@@ -324,34 +325,38 @@
 
         bloquearUI(true);
 
-        try {
-            const response = await fetch(`${API_URL}?empresa=${encodeURIComponent(cEmpresa)}&consultoria=${encodeURIComponent(cNTT)}`);
-            const data     = await response.json();
+        // Simulamos un leve retraso para evitar ataques de Fuerza Bruta instantáneos
+        setTimeout(() => {
+            try {
+                // Generamos la huella digital (Hash SHA-256) igual que en Google Sheets
+                const textoOriginal = cEmpresa + "|" + cNTT;
+                const hashGenerado  = CryptoJS.SHA256(textoOriginal).toString(CryptoJS.enc.Hex);
 
-            if (data.exito) {
-                mostrarMensaje(data.numero, true);
-                intentosFallidos = 0; // Reiniciamos contador si tuvo éxito
-                bloquearUI(false);
-            } else {
-                bloquearUI(false);
-                registrarFallo(false);
+                // Buscamos el Hash en nuestro Diccionario Seguro
+                const numEmpleado = DICCIONARIO_EMPLEADOS[hashGenerado];
+
+                if (numEmpleado) {
+                    mostrarMensaje(numEmpleado, true);
+                    intentosFallidos = 0; // Reiniciamos contador
+                } else {
+                    registrarFallo();
+                }
+            } catch (error) {
+                mostrarMensaje("Error interno al procesar la búsqueda.", false);
             }
-        } catch (error) {
             bloquearUI(false);
-            registrarFallo(true);
-        }
+        }, 800); 
     }
 
     /* Función para gestionar la regla de los 3 intentos */
-    function registrarFallo(esErrorServidor) {
+    function registrarFallo() {
         intentosFallidos++;
         
         if (intentosFallidos >= 3) {
             bloquearSitioFinal("Acceso denegado: Límite de 3 intentos fallidos superado. El portal ha sido bloqueado.");
         } else {
             const restantes = 3 - intentosFallidos;
-            const msgBase   = esErrorServidor ? "Servidor de búsqueda no disponible." : "No se encontraron coincidencias.";
-            mostrarMensaje(msgBase + " Te quedan " + restantes + " intentos.", false);
+            mostrarMensaje("No se encontraron coincidencias. Te quedan " + restantes + " intentos.", false);
         }
     }
 
