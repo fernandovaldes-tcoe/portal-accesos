@@ -167,45 +167,23 @@
         }
     }
 
-/* Función Híbrida: Intenta envío silencioso, si falla (por firewall o activación) abre el correo local */
+    /* Función Nativa: Abre directamente el correo del usuario (Aprobado para firewalls corporativos) */
     function enviarNotificacion() {
         const btn = document.getElementById('btnNotificar');
-        btn.innerText = "Enviando...";
-        btn.disabled = true;
-
         const correoUser = document.getElementById('correoUser').value.trim();
 
-        fetch("https://formsubmit.co/ajax/tcoe@coppel.com", {
-            method: "POST",
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                _subject: "Confirmación de Acceso - Nuevo Usuario",
-                Correo_Usuario: correoUser
-            })
-        })
-        .then(response => {
-            if (!response.ok) throw new Error("Bloqueo de red corporativa o falta de activación");
-            return response.json();
-        })
-        .then(data => {
-            // Si el envío silencioso funcionó
-            btn.innerText = "¡Notificación Enviada! ✔️";
-            btn.style.backgroundColor = "#218838";
-        })
-        .catch(error => {
-            // FALLBACK A PRUEBA DE FALLOS: Si algo bloquea el envío, abrimos el Outlook del usuario
-            const destinatario = "tcoe@coppel.com";
-            const asunto = encodeURIComponent("Confirmación de Acceso a Cuenta");
-            const cuerpo = encodeURIComponent(`Hola,\n\nConfirmo que he podido descifrar y acceder a mi contraseña corporativa correctamente.\n\nUsuario: ${correoUser}\nFecha: ${new Date().toLocaleString()}`);
-            
-            window.location.href = `mailto:${destinatario}?subject=${asunto}&body=${cuerpo}`;
-            
-            btn.innerText = "Abriendo tu correo... ✔️";
-            btn.style.backgroundColor = "#17a2b8"; // Cambia a azul para indicar la acción manual
-        });
+        // Preparamos el correo
+        const destinatario = "tcoe@coppel.com";
+        const asunto = encodeURIComponent("Confirmación de Acceso a Cuenta");
+        const cuerpo = encodeURIComponent(`Hola,\n\nConfirmo que he podido descifrar y acceder a mi contraseña corporativa correctamente.\n\nUsuario: ${correoUser}\nFecha: ${new Date().toLocaleString()}`);
+        
+        // Disparamos el manejador de correo local (Outlook/Gmail)
+        window.location.href = `mailto:${destinatario}?subject=${asunto}&body=${cuerpo}`;
+        
+        // Actualizamos el botón visualmente
+        btn.innerText = "Abriendo tu correo... ✔️";
+        btn.style.backgroundColor = "#17a2b8"; 
+        btn.disabled = true;
     }
     
 </script>
