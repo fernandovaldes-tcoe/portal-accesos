@@ -167,7 +167,7 @@
         }
     }
 
-    /* Función para enviar la notificación en segundo plano usando FormSubmit AJAX */
+/* Función Híbrida: Intenta envío silencioso, si falla (por firewall o activación) abre el correo local */
     function enviarNotificacion() {
         const btn = document.getElementById('btnNotificar');
         btn.innerText = "Enviando...";
@@ -186,14 +186,25 @@
                 Correo_Usuario: correoUser
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error("Bloqueo de red corporativa o falta de activación");
+            return response.json();
+        })
         .then(data => {
+            // Si el envío silencioso funcionó
             btn.innerText = "¡Notificación Enviada! ✔️";
             btn.style.backgroundColor = "#218838";
         })
         .catch(error => {
-            btn.innerText = "Error al enviar. Intenta de nuevo.";
-            btn.disabled = false;
+            // FALLBACK A PRUEBA DE FALLOS: Si algo bloquea el envío, abrimos el Outlook del usuario
+            const destinatario = "tcoe@coppel.com";
+            const asunto = encodeURIComponent("Confirmación de Acceso a Cuenta");
+            const cuerpo = encodeURIComponent(`Hola,\n\nConfirmo que he podido descifrar y acceder a mi contraseña corporativa correctamente.\n\nUsuario: ${correoUser}\nFecha: ${new Date().toLocaleString()}`);
+            
+            window.location.href = `mailto:${destinatario}?subject=${asunto}&body=${cuerpo}`;
+            
+            btn.innerText = "Abriendo tu correo... ✔️";
+            btn.style.backgroundColor = "#17a2b8"; // Cambia a azul para indicar la acción manual
         });
     }
     
