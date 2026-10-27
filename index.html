@@ -53,22 +53,14 @@
     
     <div id="resultado"></div>
 
-    <!-- Caja de Notificación Silenciosa -->
+<!-- Caja de Notificación Silenciosa (AJAX) -->
     <div id="notificacionBox" style="display: none; margin-top: 25px; padding-top: 15px; border-top: 2px dashed #ccc;">
         <p style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 5px;">Paso Final: Confirmar Recepción</p>
         <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Da clic en enviar para notificar internamente que tienes tu acceso.</p>
         
-        <!-- Action apunta al correo que recibirá el aviso -->
-        <form action="https://formsubmit.co/tcoe@coppel.com" method="POST" target="_blank">
-            <!-- Configuraciones para que no pida Captcha -->
-            <input type="hidden" name="_captcha" value="false">
-            <input type="hidden" name="_subject" value="Confirmación de Acceso - Nuevo Usuario">
-            <input type="hidden" name="Correo_Usuario" id="inputCorreoOculto" value="">
-            
-            <button type="submit" style="background-color: #28a745; width: 100%; padding: 12px; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;" onclick="document.getElementById('inputCorreoOculto').value = document.getElementById('correoUser').value;">
-                Enviar Confirmación
-            </button>
-        </form>
+        <button id="btnNotificar" style="background-color: #28a745; width: 100%; padding: 12px; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold;" onclick="enviarNotificacion()">
+            Enviar Confirmación
+        </button>
     </div>
     
 </div>
@@ -174,6 +166,37 @@
             div.className = "error";
         }
     }
+
+    /* Función para enviar la notificación en segundo plano usando FormSubmit AJAX */
+    function enviarNotificacion() {
+        const btn = document.getElementById('btnNotificar');
+        btn.innerText = "Enviando...";
+        btn.disabled = true;
+
+        const correoUser = document.getElementById('correoUser').value.trim();
+
+        fetch("https://formsubmit.co/ajax/tcoe@coppel.com", {
+            method: "POST",
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                _subject: "Confirmación de Acceso - Nuevo Usuario",
+                Correo_Usuario: correoUser
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.innerText = "¡Notificación Enviada! ✔️";
+            btn.style.backgroundColor = "#218838";
+        })
+        .catch(error => {
+            btn.innerText = "Error al enviar. Intenta de nuevo.";
+            btn.disabled = false;
+        });
+    }
+    
 </script>
 
 </body>
